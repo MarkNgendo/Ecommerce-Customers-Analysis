@@ -1,0 +1,471 @@
+---
+title: "Blog Advertising Analysis through EDA"
+author: "Mark Ngendo"
+date: "7/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Specifying the Question
+A Kenyan entrepreneur has created an online cryptography course and would want to advertise it on her blog. She currently targets audiences originating from various countries. In the past, she ran ads to advertise a related course on the same blog and collected data in the process. She would now like to employ your services as a Data Science Consultant to help her identify which individuals are most likely to click on her ads.
+
+## Understanding the Context
+
+Digital marketing has become increasingly popular as more and more business shift towards targeting their clients using the internet. As every business rushes to grab its share of online consumers, the question of  what is behind a successful ad becomes increasingly important. Some factors have stood out such as:
+
+* Whether the ad is in text form or not
+* Relevance to what the users were searching for
+* Whether the users fit the relevant demographic of the ad
+* Which websites they use when searching online
+
+## Defining the metric of Success
+The study will be considered a success if it can identify which people are likely to click on the clients advertisements given the features available in the data.
+
+## Recording the experimental design
+* Loading the data
+* Performing Data Cleaning
+* Perform Exploratory Data Analysis: 
+  +  Uni variate and,
+  +  Bi variate analysis
+* Provide Insights from analysis
+* Solution implementation using Supervised Modeling
+* Provide Recommendations based on insights
+
+## Data Relevance
+The data set can be gotten from this [Link](http://bit.ly/IPAdvertisingData)
+Below is the glossary:
+
+* Daily time spent - Specifies how many minutes an individual spends on site in a day
+* Age -  Age of the individual
+* Area Income
+* Daily Internet Usage - total minutes spent on the internet by the individual
+* Ad Topic Line - title of the Ad presented to the Individual
+* City - City the individual resides in
+* Male - Binary (0: Female/Not Male, 1: Male)
+* Country -  Country the individual resides in
+* Time stamp
+* Clicked on Ad - Binary(0: No, 1: Yes)
+
+## Objectives
+### Overall Objectives
+To identify the individuals that are most likely to click on the client's ads
+
+### Specific Objectives
+* To identify the blog's key demographic in terms of age group, gender and country of origin.
+* To examine the relationship between time spent on the blog and daily internet usage when it comes to clicking on ads.
+
+
+## Loading the Libraries
+
+```{r}
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(e1071)
+library(gridExtra)
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+library(ranger)
+library(caret)
+library(modelr)
+library(broom)
+```
+## Loading the dataset
+
+Previewing the top of the dataset
+```{r}
+df <- read.csv(("http://bit.ly/IPAdvertisingData"))
+head(df)
+```
+
+Previewing the tail of the dataset
+```{r}
+tail(df)
+```
+```{r}
+# viewing the structure of the data
+
+str(df)
+```
+
+
+## Data Cleaning
+### Completeness
+
+Checking for Null values
+
+```{r}
+colSums(is.na(df))
+```
+### Consistency
+
+Checking for duplicates
+
+```{r}
+
+df[duplicated(df), ]
+```
+
+### Accuracy
+```{r}
+# casting Male and Clicked on ad as categorical columns
+
+df$Male <- as.factor(df$Male)
+df$Clicked.on.Ad <- as.factor(df$Clicked.on.Ad)
+
+# confirming
+
+str(df$Clicked.on.Ad)
+str(df$Male)
+```
+
+
+## Univariate Analysis
+
+
+### Daily Time Spent on Site
+```{r}
+# Mean
+site_time.mean <- mean(df$Daily.Time.Spent.on.Site)
+site_time.mean
+
+# mode
+get_mode <- function(x){
+  uniqx <- unique(x)
+  uniqx[which.max(tabulate(match(x, uniqx)))]
+}
+
+site_time.mode <- get_mode(df$Daily.Time.Spent.on.Site)
+site_time.mode
+
+# Median
+site_time.median <- median(df$Daily.Time.Spent.on.Site)
+site_time.median
+
+# Standard Deviation
+
+site_time.sd <- sd(df$Daily.Time.Spent.on.Site)
+site_time.sd
+
+# Skewness
+site_time.skew <- skewness(df$Daily.Time.Spent.on.Site)
+site_time.skew
+
+# Kurtosis
+site_time.kurt <- kurtosis(df$Daily.Time.Spent.on.Site)
+site_time.kurt
+
+# Quantiles
+site_time.quantiles <- quantile(df$Daily.Time.Spent.on.Site)
+site_time.quantiles
+
+# Boxplot
+ggplot(df, aes(x=Daily.Time.Spent.on.Site)) +
+  geom_boxplot(outlier.colour = 'red') +
+  labs(title='Boxplot of Daily time spent on site',
+       x='Daily Time Spent on')
+```
+
+### Age
+```{r}
+age.mean <- mean(df$Age)
+age.mean
+
+# Mode
+age.mode <- get_mode(df$Age)
+age.mode
+
+# Median
+age.median <- median(df$Age)
+age.median
+
+
+# Standard Deviation
+age.sd <- sd(df$Age)
+age.sd
+
+# Kurtosis
+age.kurt <- kurtosis(df$Age)
+age.kurt
+
+# Skewness
+age.skew <- skewness(df$Age)
+age.skew
+
+# Quantiles
+age.quantiles <- quantile(df$Age)
+age.quantiles
+
+# Boxplot
+age1 <-ggplot(df, aes('var', Age)) +
+    geom_boxplot(outlier.colour = 'red') +
+    labs(title="Boxplot of Age",
+        x="Age")
+age2 <- ggplot(df, aes("var",Age)) +
+  geom_point() +
+  geom_violin() +
+  
+  labs(title="Violin plot of Age",
+       x="Age")
+grid.arrange(age1, age2, nrow=1)
+```
+### Area Income
+```{r}
+# Mean
+income.mean <- mean(df$Area.Income)
+income.mean
+
+# Mode
+income.mode <- get_mode(df$Area.Income)
+income.mode
+
+# Median
+income.median <- median(df$Area.Income)
+income.median
+
+# Quantiles
+income.quantiles <- quantile(df$Area.Income)
+income.quantiles
+
+# Standard Deviation
+income.sd <- sd(df$Area.Income)
+income.sd
+
+# Skewness
+income.skew <- skewness(df$Area.Income)
+income.skew
+
+# Kurtosis
+income.kurt <- kurtosis(df$Area.Income)
+income.kurt
+
+# distribution
+income1 <- ggplot(df, aes("var", Area.Income)) +
+            geom_boxplot(outlier.colour = 'red') +
+            labs(title="Boxplot of Area Income",
+                 y="Area Income")
+income2 <- ggplot(df, aes("var", Area.Income)) +
+            geom_point() +
+            geom_violin() +
+            labs(title="Violin Plot of Area Income")
+grid.arrange(income1, income2, ncol=2)
+```
+### Daily Internet Usage
+
+```{r}
+# Mean
+net_time.mean <- mean(df$Daily.Internet.Usage)
+net_time.mean
+
+# Mode
+net_time.mode <- get_mode(df$Daily.Internet.Usage)
+net_time.mode
+
+# Median
+net_time.median <- median(df$Daily.Internet.Usage)
+net_time.median
+
+# Quantiles
+net_time.quantiles <- quantile(df$Daily.Internet.Usage)
+net_time.quantiles
+
+# standard Deviation
+net_time.sd <- sd(df$Daily.Internet.Usage)
+net_time.sd
+
+# Kurtosis
+net_time.kurt <- kurtosis(df$Daily.Internet.Usage)
+net_time.kurt
+
+# Skewness
+net_time.skew <- skewness(df$Daily.Internet.Usage)
+net_time.skew
+
+# Distribution
+
+netb <- ggplot(df, aes("Var", Daily.Internet.Usage)) +
+        geom_boxplot(outlier.color = 'red') +
+        labs(title="Boxplot of Daily Internet Usage")
+
+netv <- ggplot(df, aes("Var", Daily.Internet.Usage)) +
+        geom_point() +
+        geom_violin() +
+        labs(title="Violin plot of Daily Internet Usage")
+
+grid.arrange(netb, netv, ncol=2)
+```
+
+
+### Plots of visualizations
+
+Age distribution
+
+```{r}
+hist(x= df$Age, xlab='Age', col="Cyan",
+     main="Age Distribution of Users")
+```
+
+The plot shows that the majority of site visitors are between age 25 and 40.
+
+```{r}
+hist(x=df$Daily.Time.Spent.on.Site, col="magenta", xlab="Daily time on site(minutes)",
+     main = "Daily time spent on Blog")
+```
+
+From this, it is clear that quite a number of users spend an upward of 60 minutes on the blog's website. It is mainly between 1-1 hour 20 minutes. Though, there are some who spend less than an hour on the site.
+
+```{r}
+hist(x=df$Daily.Internet.Usage, xlab="Daily Internet Usage(minutes)", col="orange",
+     main="Overall daily internet usage of Users")
+```
+
+This graph shows that most users that visit the site spend roughly between 2 to 4 hours in total on the internet.
+
+```{r}
+table(df$Male)
+```
+
+The above frequency table shows that the site has more female/non-male(0) visitors than males(1).
+
+```{r}
+table(df$Clicked.on.Ad)
+```
+
+There were an equal number of users who clicked on ads as those who did not.
+
+```{r}
+# to inspect the area income distribution
+hist(df$Area.Income, col="green", main='Area Income Distribution',
+    xlab="Income")
+
+
+```
+
+The distribution appears to be skewed to the right with most of it being between 45000 and  70,000.
+
+### Bivariate Analaysis
+
+```{r}
+# area income vs clicking on ads
+ggplot(df, aes(x=Daily.Time.Spent.on.Site, fill=Clicked.on.Ad, color=Clicked.on.Ad)) +
+  geom_histogram(binwidth=1) + labs(title="Time Spent on Site vs Clicking on Ads")
+```
+```{r}
+ggplot(df, aes(x=Daily.Internet.Usage, fill=Clicked.on.Ad, color=Clicked.on.Ad)) +
+  geom_histogram(binwidth=1) + labs(title="Time Spent Online vs Clicking on Ads")
+```
+
+```{r}
+# how each gender reacts to ads
+ggplot(df, aes(x=Male, fill=Clicked.on.Ad, color=Clicked.on.Ad)) +
+  geom_histogram(binwidth = 1, stat = "count") + labs(title="Gender Distribution") +
+  theme_bw()
+
+```
+
+The non-male category seems to click on ads slightly more than their male counterparts.
+
+
+
+```{r}
+# Age distribution and Ads
+
+ggplot(data=df, aes(Age,fill=Clicked.on.Ad, color=Clicked.on.Ad)) +
+  geom_histogram(binwidth=1) + labs(title="Age vs Clicking on Ads") +
+  theme_dark()
+  
+```
+Majority of the people aged between 20 and 40 tend not to click on ads on the site.
+
+```{r}
+# Area income vs Ads
+ggplot(data=df, aes(Area.Income, color=Clicked.on.Ad)) +
+  geom_freqpoly() +
+  labs(title="Area Income vs Clicking Ads")
+```
+ 
+### Correlations
+
+```{r}
+cor(df[, c('Daily.Time.Spent.on.Site', "Daily.Internet.Usage", "Area.Income", "Age")])
+```
+The above table shows that the only linearly correlated variables are Daily Internet Usage and Daily Time Spent on Site which makes perfect sense.
+
+## Solution Implementation
+
+A decision tree is going to be used to predict whether an individual will click on ads or not
+
+```{r}
+# choosing features to be used
+x <- df[, c(1, 2, 3,4, 7, 10)]
+y <- df[, "Clicked.on.Ad"]
+
+# Train partition
+
+ratio <- createDataPartition(x$Clicked.on.Ad, p=.8, list=FALSE)
+train <- x[ratio, ]
+test <- x[-ratio, ]
+labels <- test$Clicked.on.Ad
+```
+
+```{r}
+# Logistic Model implementation
+
+model <- glm(Clicked.on.Ad ~., data=train, family=binomial)
+summary(model)$coef
+```
+
+```{r}
+# Predictions and evaluations
+pred <- predict(model, type = 'response', test)
+
+pred.classes <- ifelse(pred >0.5, 1, 0)
+
+pred.classes <- factor(pred.classes)
+
+confusionMatrix(pred.classes, test$Clicked.on.Ad)
+```
+
+Insights:
+
+* The model has the ability of predicting True Positives extremely well given the high sensitivity score.
+
+* The model will hold when it comes to predicting True Negatives(will not click on ads) amazingly well given
+ the good Specificity score.
+
+## Conclusions
+
+From the above analysis, the following points stand out:
+
+* The demographic of the Blogger consists of:
+
+    + equal numbers of both Male and Non-male users,
+    + high numbers of people aged between 25 and 40 but majority within this age do not click on ads.
+    + male users click on ads slightly less than their counterparts.
+
+* The people most likely to click on ads spend not more than 60 minutes in a 
+day on the site.
+
+* Most people with a relatively low income tend to click on ads
+
+## Recommendations
+
+From the above analysis, we recommend the following:
+
+* Use ads that mainly target non-male users of the site since they are most likely to click on ads.
+* Target people who ear between 22000 and 55,000 as they are more likely to click on ads.
+* People above the age of 40 are more likely to click on ads.
+
+## Follow up questions
+### Did we have the right Data?
+Yes we did. It was appropriate enough for the study to move forward.
+
+### Do we need further data to answer the question?
+Yes. Ads sorted into different categories can greatly affect the analysis. Having this added information would make it possible to filter out which categories gathered more clicks on ads.
+
+### Did we have the right question?
+Yes. After conducting analysis, the data revealed what we set out to investigate and did not make the analyst reevaluate the question of study.
