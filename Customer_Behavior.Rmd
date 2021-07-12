@@ -1,0 +1,857 @@
+---
+title: "Ecommerce Customers Analysis"
+author: "Mark Ngendo"
+date: "7/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem Definition
+Kira Plastinina is a Russian brand that is sold through a defunct chain of retail stores in Russia, Ukraine, Kazakhstan, Belarus, China, Philippines, and Armenia. The brand’s Sales and Marketing team would like to understand their customer’s behavior from data that they have collected over the past year. More specifically, they would like to learn the characteristics of customer groups.
+
+
+## Defining the Metric of Success
+To use Unsupervised learning algorithms on the given data to extract useful information on customer behaviour.
+
+## Data Relevance
+
+The dataset can be retrieved from this link -> http://bit.ly/EcommerceCustomersDataset
+
+The description of the dataset is as follows:
+
+* The dataset consists of 10 numerical and 8 categorical attributes. The 'Revenue' attribute can be used as the class label.
+* "Administrative", "Administrative Duration", "Informational", "Informational Duration", "Product Related" and "Product Related Duration" represents the number of different types of pages visited by the visitor in that session and total time spent in each of these page categories. The values of these features are derived from the URL information of the pages visited by the user and updated in real-time when a user takes an action, e.g. moving from one page to another. 
+* The "Bounce Rate", "Exit Rate" and "Page Value" features represent the metrics measured by "Google Analytics" for each page in the e-commerce site. 
+* The value of the "Bounce Rate" feature for a web page refers to the percentage of visitors who enter the site from that page and then leave ("bounce") without triggering any other requests to the analytics server during that session. 
+* The value of the "Exit Rate" feature for a specific web page is calculated as for all pageviews to the page, the percentage that was the last in the session.
+* The "Page Value" feature represents the average value for a web page that a user visited before completing an e-commerce transaction. 
+* The "Special Day" feature indicates the closeness of the site visiting time to a specific special day (e.g. Mother’s Day, Valentine's Day) in which the sessions are more likely to be finalized with the transaction. The value of this attribute is determined by considering the dynamics of e-commerce such as the duration between the order date and delivery date. For example, for Valentina’s day, this value takes a nonzero value between February 2 and February 12, zero before and after this date unless it is close to another special day, and its maximum value of 1 on February 8. 
+* The dataset also includes the operating system, browser, region, traffic type, visitor type as returning or new visitor, a Boolean value indicating whether the date of the visit is weekend, and month of the year.
+
+
+
+## Loading Libraries
+```{r}
+library(caret)
+library(Amelia)
+library(e1071)
+library(factoextra)
+library(ggplot2)
+library(CatEncoders)
+library(cluster)
+library(purrr)
+```
+
+## Loading the data
+```{r}
+df <- read.csv("http://bit.ly/EcommerceCustomersDataset")
+```
+
+### Preview of the Dataset
+```{r}
+head(df)
+```
+
+## Data Cleaning
+### Completeness
+```{r}
+# checking for missing values
+colSums(is.na(df))
+```
+```{r}
+# dropping null values
+df <- na.omit(df)
+
+```
+
+### Consistency
+```{r}
+
+# eliminating for duplicates
+df <- df[!duplicated(df), ]
+```
+
+### Accuracy
+```{r}
+# casting categorical columns as factors
+
+df$Month <- factor(df$Month)
+df$OperatingSystems <- factor(df$OperatingSystems)
+df$Browser <- factor(df$Browser)
+df$Region <- factor(df$Region)
+df$TrafficType <- factor(df$TrafficType)
+df$VisitorType <- factor(df$VisitorType)
+df$Weekend <- factor(df$Weekend)
+df$Revenue <- factor(df$Revenue)
+```
+
+
+### Dataset structure
+```{r}
+str(df)
+```
+
+```{r}
+# numerical summary of variables
+
+summary(df)
+```
+
+## Univariate Analysis
+
+### Administrative
+
+```{r}
+# mean
+
+admin.mean <- mean(df$Administrative)
+admin.mean
+
+# mode
+mode <- function(x){
+  uniqx <- unique(x)
+  uniqx[which.max(tabulate(match(x, uniqx)))]
+}
+admin.mode <- mode(df$Administrative)
+admin.mode
+
+# Median
+admin.median <- median(df$Administrative)
+admin.median
+
+# Range
+admin.range <- range(df$Administrative)
+admin.range
+
+# standard deviation
+admin.sd <- sd(df$Administrative)
+admin.sd
+
+# kurtsosis
+admin.kurt <- kurtosis(df$Administrative)
+admin.kurt
+
+# skewness
+admin.skew <- skewness(df$Administrative)
+admin.skew
+
+# quantiles
+admin.quant <- quantile(df$Administrative)
+admin.quant
+
+# Distribution
+ggplot(data=df, aes(y=Administrative)) +
+  geom_boxplot(outlier.colour = 'red') +
+  labs(title="Adiministrative Feature")
+```
+
+### Administartive Duration
+```{r}
+# Mean
+aduration.mean <- mean(df$Administrative_Duration)
+aduration.mean
+
+# Mode
+aduration.mode <- mode(df$Administrative_Duration)
+aduration.mode
+
+# Median
+aduration.median <- median(df$Administrative_Duration)
+aduration.median
+
+# Range
+aduration.range <- range(df$Administrative_Duration)
+aduration.range
+
+# Standard Deviation
+aduration.sd <- sd(df$Administrative_Duration)
+aduration.sd
+
+# Quantiles
+aduration.quant <- quantile(df$Administrative_Duration)
+aduration.quant
+
+# Kurtosis
+aduration.kurt <- kurtosis(df$Administrative_Duration)
+aduration.kurt
+
+# Skewness
+aduration.skew <- skewness(df$Administrative_Duration)
+aduration.skew
+
+# Distribution
+
+ggplot(data=df, aes(y=Administrative_Duration)) +
+  geom_boxplot(outlier.color = "red") +
+  labs(title="Administrative Duration")
+```
+
+### Informational
+```{r}
+# mean
+info.mean <- mean(df$Informational)
+info.mean
+
+# Mode
+info.mode <- mode(df$Informational)
+info.mode
+
+# Median
+info.median <- median(df$Informational)
+info.median
+
+# Range
+info.range <- range(df$Informational)
+info.range
+
+# Standard deviation
+info.sd <- sd(df$Informational)
+info.sd
+
+# Quantiles
+info.quant <- sd(df$Informational)
+info.quant
+
+# Skewness
+info.skew <- skewness(df$Informational)
+info.skew
+
+# Kurtosis
+info.kurt <- kurtosis(df$Informational)
+info.kurt
+
+# Distribution
+ggplot(data=df, aes(y=Informational)) +
+  geom_boxplot(outlier.colour = "red") +
+  labs(title="Informational Boxplot")
+
+```
+
+### Informational Duration
+```{r}
+# mean
+infod.mean <- mean(df$Informational_Duration)
+infod.mean
+
+# Mode
+infod.mode <- mode(df$Informational_Duration)
+infod.mode
+
+# Median
+infod.median <- median(df$Informational_Duration)
+infod.median
+
+# Range
+infod.range <- range(df$Informational_Duration)
+infod.range
+
+# Standard deviation
+infod.sd <- sd(df$Informational_Duration)
+infod.sd
+
+# Quantiles
+infod.quant <- sd(df$Informational_Duration)
+infod.quant
+
+# Skewness
+infod.skew <- skewness(df$Informational_Duration)
+infod.skew
+
+# Kurtosis
+infod.kurt <- kurtosis(df$Informational_Duration)
+infod.kurt
+
+# Distribution
+ggplot(data=df, aes(y=Informational_Duration)) +
+  geom_boxplot(outlier.colour = "red") +
+  labs(title="Informational_Duration Boxplot")
+
+```
+
+### Product Related
+```{r}
+# Mean
+prod.mean <- mean(df$ProductRelated)
+prod.mean
+
+# Mode
+prod.mode <- mode(df$ProductRelated)
+prod.mode
+
+# Median
+prod.median <- median(df$ProductRelated)
+prod.median
+
+# Range
+prod.range <- range(df$ProductRelated)
+prod.range
+
+# Standard deviation
+prod.sd <- sd(df$ProductRelated)
+prod.sd
+
+# Quantiles
+prod.quant <- quantile(df$ProductRelated)
+prod.quant
+
+# Kurtosis
+prod.kurt <- kurtosis(df$ProductRelated)
+prod.kurt
+
+# Skewness
+prod.skew <- skewness(df$ProductRelated)
+prod.skew
+
+# Distribution
+ggplot(df, aes(y=ProductRelated)) +
+  geom_boxplot(outlier.colour = "red") +
+  labs(title="Product Related")
+```
+
+### Product related Duration
+```{r}
+# Mean
+proddur.mean <- mean(df$ProductRelated_Duration)
+proddur.mean
+
+# Mode
+proddur.mode <- mode(df$ProductRelated_Duration)
+proddur.mode
+
+# Median
+proddur.median <- median(df$ProductRelated_Duration)
+proddur.median
+
+# Range
+proddur.range <- range(df$ProductRelated_Duration)
+proddur.range
+
+# Standard deviation
+proddur.sd <- sd(df$ProductRelated_Duration)
+proddur.sd
+
+# Quantiles
+proddur.quant <- quantile(df$ProductRelated_Duration)
+proddur.quant
+
+# Kurtosis
+proddur.kurt <- kurtosis(df$ProductRelated_Duration)
+proddur.kurt
+
+# Skewness
+proddur.skew <- skewness(df$ProductRelated_Duration)
+proddur.skew
+
+# Distribution
+ggplot(df, aes(y=ProductRelated_Duration)) +
+  geom_boxplot(outlier.colour = "red") +
+  labs(title="Product Related Duration")
+```
+
+### Bounce Rate
+```{r}
+# Mean
+bounce.mean <- mean(df$BounceRates)
+bounce.mean
+
+# Mode
+bounce.mode <- mode(df$BounceRates)
+bounce.mode
+
+# Median
+bounce.median <- median(df$BounceRates)
+bounce.median
+
+# Range
+bounce.range <- range(df$BounceRates)
+bounce.range
+
+# Standard Deviation
+bounce.sd <- sd(df$BounceRates)
+bounce.sd
+
+# Quantiles
+bounce.quant <- quantile(df$BounceRates)
+bounce.quant
+
+# Kurtosis
+bounce.kurt <- kurtosis(df$BounceRates)
+bounce.kurt
+
+# Skewness
+bounce.skew <- skewness(df$BounceRates)
+bounce.skew
+
+# Distribution
+ggplot(df, aes(y=BounceRates)) +
+  geom_boxplot(outlier.colour = "red") +
+  labs(y="BounceRates")
+```
+
+### Exit Rate
+```{r}
+# Mean
+exit.mean <- mean(df$ExitRates)
+exit.mean
+
+# Mode
+exit.mode <- mode(df$ExitRates)
+exit.mode
+
+# Median
+exit.median <- median(df$ExitRates)
+exit.median
+
+# Range
+exit.range <- range(df$ExitRates)
+exit.range
+
+# Standard Deviation
+exit.sd <- sd(df$ExitRates)
+exit.sd
+
+# Quantiles
+exit.quant <- quantile(df$ExitRates)
+exit.quant
+
+# Kurtosis
+exit.kurt <- kurtosis(df$ExitRates)
+exit.kurt
+
+# Skewness
+exit.skew <- skewness(df$ExitRates)
+exit.skew
+
+# Distribution
+ggplot(df, aes(y=ExitRates)) +
+  geom_boxplot(outlier.color = "red")
+
+```
+
+### Page Value
+```{r}
+# Mean
+page.mean <- mean(df$PageValues)
+page.mean
+
+# Mode
+page.mode <- mode(df$PageValues)
+page.mode
+
+# Median
+page.median <- median(df$PageValues)
+page.median
+
+# Range
+page.range <- range(df$PageValues)
+page.range
+
+# Standard Deviatoion
+page.sd <- sd(df$PageValues)
+page.sd
+
+# Quantiles
+page.quant <- sd(df$PageValues)
+page.quant
+
+# Kurtosis
+page.kurt <- kurtosis(df$PageValues)
+page.kurt
+
+# Skewness
+page.skew <- skewness(df$PageValues)
+page.skew
+
+# Distribution
+
+ggplot(df, aes(y=PageValues)) +
+  geom_boxplot(outlier.colour = "red")
+```
+
+### Special Day
+```{r}
+# Mean
+special.mean <- mean(df$SpecialDay)
+special.mean
+
+# Mode
+special.mode <- mode(df$SpecialDay)
+special.mode
+
+# Median
+special.median <- median(df$SpecialDay)
+special.median
+
+# Range
+special.range <- range(df$PageValues)
+special.range
+
+# Standard Deviatoion
+special.sd <- sd(df$SpecialDay)
+special.sd
+
+# Quantiles
+special.quant <- sd(df$SpecialDay)
+special.quant
+
+# Kurtosis
+special.kurt <- kurtosis(df$SpecialDay)
+special.kurt
+
+# Skewness
+special.skew <- skewness(df$SpecialDay)
+special.skew
+
+# Distribution
+
+ggplot(df, aes(y=SpecialDay)) +
+  geom_boxplot(outlier.colour = "red")
+```
+
+### Operating System
+```{r}
+# Mode
+op.mode <- mode(df$OperatingSystems)
+op.mode
+
+# Distribution
+ggplot(df, aes(OperatingSystems)) +
+  geom_bar()
+```
+Most individuals use the 2nd Operating system. Only the first four OSs seem to be popular.
+
+### Browser
+```{r}
+# Mode
+browser.mode <- mode(df$Browser)
+browser.mode
+
+# Distribution
+ggplot(df, aes(Browser)) +
+  geom_bar()
+```
+The 2nd browser is the most popular one. Other then the first two, the other browsers barely used by site visitors.
+
+### Traffic Type
+```{r}
+# Mode
+traffic.mode <- mode(df$TrafficType)
+traffic.mode
+
+# Distribution
+ggplot(df, aes(TrafficType)) +
+  geom_bar()
+```
+ The most prevalent traffic type is the second one with 7, 9, 12, 14, 15, 16 ,17, 19, 19 having very low contributions to the pool.
+
+### Visitor Type
+```{r}
+# Mode
+visitor.mode <- mode(df$VisitorType)
+visitor.mode
+
+# Distribution
+ggplot(df, aes(VisitorType)) +
+  geom_bar()
+```
+Returning Visitors are the most abundant on the website.
+
+### Region
+```{r}
+# Mode
+region.mode <- mode(df$Region)
+region.mode
+
+# Distributions
+ggplot(df, aes(Region)) +
+  geom_bar()
+```
+
+The first region contributes the most site users with the rest coming from the others.
+
+### Month
+```{r}
+# Mode
+month.mode <- mode(df$Month)
+month.mode
+
+# Distributions
+ggplot(df, aes(Month)) +
+  geom_bar()
+```
+The website recieves the most customers in the months of March, May, November and December.
+
+### Weekend
+```{r}
+# Mode
+wknd.mode <- mode(df$Weekend)
+wknd.mode
+
+# Distribution
+ggplot(df, aes(Weekend)) +
+  geom_bar()
+```
+
+Most users visit the site during weekends.
+
+### Revenue
+```{r}
+# Mode
+revenue.mode <- mode(df$Revenue)
+revenue.mode
+
+# Distribution
+ggplot(df, aes(Revenue)) +
+  geom_bar()
+```
+
+Most users do not bring in revenue through their activity on the site.
+
+## BIvariate Analysis
+Examining how different variables affect the labels
+
+```{r}
+# Administrative sites and Revenue
+
+ggplot(df, aes(Administrative, color=Revenue)) +
+  geom_freqpoly(binwidth=1)
+```
+
+```{r}
+ggplot(df, aes(Administrative_Duration, color=Revenue)) +
+  geom_freqpoly()
+```
+
+```{r}
+ggplot(df, aes(Informational, color=Revenue)) +
+  geom_freqpoly()
+```
+
+```{r}
+ggplot(df, aes(Informational_Duration, color=Revenue)) +
+  geom_freqpoly()
+```
+
+```{r}
+ggplot(df, aes(ProductRelated, color=Revenue)) +
+  geom_freqpoly()
+```
+
+```{r}
+ggplot(df, aes(SpecialDay, color=Revenue)) +
+  geom_freqpoly() +
+  theme_classic()
+```
+
+```{r}
+ggplot(df, aes(PageValues, color=Revenue)) +
+  geom_freqpoly()
+```
+
+
+```{r}
+# Months vs GeneratingRevenue
+
+ggplot(df, aes(Month, color=Revenue, fill=Revenue)) +
+  geom_bar(binwidth=1)
+```
+March, May, November and December are the months which generate significantly more revenue for the business.
+
+```{r}
+# Day type vs Generating Revenue
+ggplot(df, aes(Weekend, color=Revenue, fill=Revenue)) +
+  geom_bar(binwidth=1)
+```
+
+Weekdays generate slightly more Revenue than weekends.
+
+```{r}
+# Operating systems vs Generating Revenue
+ggplot(df, aes(OperatingSystems, color=Revenue, fill=Revenue)) +
+  geom_bar()
+```
+Users of type 2 OS generated the most revenue for the site, while 1, and 3 followed.
+
+```{r}
+ggplot(df, aes(Region, fill=Revenue, color=Revenue)) +
+  geom_bar(binwidth=1)
+```
+Region 1 produced the most revenue out of all the others with region 5 producing the least.
+
+```{r}
+# Visitor type and revenue
+ggplot(df, aes(VisitorType, color=Revenue, fill=Revenue)) +
+  geom_bar(binwidth=2)
+```
+
+Returning visitors generated a lot more revenue than new ones
+
+```{r}
+# Bounce rates vs Revenue
+
+ggplot(df, aes(BounceRates, color=Revenue)) +
+  geom_freqpoly()
+```
+A lot of sites had a high percentage of visitors just leaving without triggering any requests from our target website.
+
+### Correlations
+```{r}
+cor(df[,unlist(lapply(df, is.numeric))])
+```
+
+The rates were significantly correlated while types of number of sites were strongly correlated with how much time was spent in them.
+
+
+## Solution Implementation using Clustering
+
+### Data Preparation
+```{r}
+
+
+# label encoding
+month <- LabelEncoder.fit(df$Month)
+df$Month <- transform(month, factor(df$Month))
+
+wknd <- LabelEncoder.fit(df$Weekend)
+df$Weekend <- transform(wknd, factor(df$Weekend))
+
+visitor <- LabelEncoder.fit(df$VisitorType)
+df$VisitorType <- transform(visitor, factor(df$VisitorType))
+
+
+head(df)
+```
+
+### KMEANS CLUSTERING
+
+```{r}
+# separating features from Revenue labels
+
+x <- df[, -18]
+
+# normalizing
+normalize <- function(x){
+  return ((x-min(x)) / (max(x)-min(x)))
+}
+
+x$Administrative <- normalize(x$Administrative)
+x$Administrative_Duration <- normalize(x$Administrative_Duration)
+x$Informational <- normalize(x$Informational)
+x$Informational_Duration <- normalize(x$Informational_Duration)
+x$ProductRelated <- normalize(x$ProductRelated)
+x$ProductRelated_Duration <- normalize(x$ProductRelated_Duration)
+x$BounceRates <- normalize(x$BounceRates)
+x$ExitRates <- normalize(x$ExitRates)
+x$PageValues <- normalize(x$PageValues)
+x$SpecialDay <- normalize(x$SpecialDay)
+
+```
+
+```{r}
+# finding optimum k
+
+fviz_nbclust(x, kmeans, method="wss")
+```
+
+According to the elbow plot above, only 3 clusters are sufficient. This shall be cross checked using the silhouette method
+
+```{r}
+# silhouette method
+fviz_nbclust(x, kmeans, method="silhouette")
+```
+
+
+3 clusters shall be used.
+
+```{r}
+# Using 3 clusters
+k <- kmeans(x, centers=3, nstart=25)
+```
+
+```{r}
+# Number of records in each cluster
+k$size
+```
+
+```{r}
+str(k)
+```
+
+```{r}
+df$cluster <- as.factor(k$cluster)
+head(df)
+```
+
+### Hierarchical Clustering
+
+```{r}
+# copy of the dataset
+
+copy <- df[, 1:17]
+
+# scaling the data
+copy$Administrative <- scale(copy$Administrative)
+copy$Administrative_Duration <- scale(copy$Administrative_Duration)
+copy$Informational <- scale(copy$Informational)
+copy$Informational_Duration <- scale(copy$Informational_Duration)
+copy$ProductRelated <- scale(copy$ProductRelated)
+copy$ProductRelated_Duration <- scale(copy$ProductRelated_Duration)
+copy$BounceRates <- scale(copy$BounceRates)
+copy$ExitRates <- scale(copy$ExitRates)
+copy$PageValues <- scale(copy$PageValues)
+copy$SpecialDay <- scale(copy$SpecialDay)
+
+# computing the distance
+d <- dist(copy, method="euclidean")
+
+# Clustering  algorithm deployment
+model <- hclust(d, method="ward.D2")
+
+```
+
+```{r}
+# viewing the dendogram
+plot(model, cex=0.6, hang=-1)
+```
+
+```{r}
+# Ward's method
+hc <- hclust(d, method="ward.D2")
+
+# cut the tree into 5 parts
+sub_grp <- cutree(hc, k=4)
+
+table(sub_grp)
+```
+
+```{r}
+plot(hc, cex=2, hang=-1 )
+rect.hclust(hc, k=4, border=2:5)
+
+```
+
+## Conclusions
+
+From the extensive exploratory data analysis, the following are insights about consumer behaviour:
+
+* Customers tend to use mainly the second operating system and as a consequence, they generate the most revenue for the site using that same website.
+
+* In the entire category of customer types, the returning visitors will always generate revenue for the site at a higher degree than any other type.
+
+* Customer numbers and revenue generated start spiking starting October and peak come November which can probably be attributed to the Christmas holiday period.
+
+* Weekdays have the highest flux of customers on the site.
+
+## Recommendations
+
+We recommend the following:
+
+* The website  could do with some redesigning when it comes to the website's user interface to lower the bounce rates. These changes can be optimized by conducting a survey about what is most appealing to a broad audience.
+
+
+* To improve customer engagement across the board when it comes to operating systems, some OS specific optimization can be implemented to give more consumers a more suitable environment to shop in. This may help bring in more income from users in other Operating systems aside from the prevalent one.
+
+* The company can provide more promotional offers throughout the year as opposed to having them only during the Christmas period. This could significantly improve sales evenly throughout the year.
